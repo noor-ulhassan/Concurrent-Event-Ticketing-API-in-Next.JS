@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
 
-const dbConnect = new mongoose.Connection();
 
+const dbConnect = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI!);
+        console.log("MongoDB connected");
+    } catch (error) {
+        console.error("MongoDB connection error:", error);
+    }
+}
 
-const PORT = 3000;
-
+export default dbConnect;
