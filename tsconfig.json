@@ -28,7 +28,9 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "src/models/Event.js",
+    "src/models/Ticket.js"
   ],
   "exclude": ["node_modules"]
 }
