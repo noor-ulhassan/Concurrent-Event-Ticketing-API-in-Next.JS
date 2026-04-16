@@ -11,6 +11,10 @@ export default function Home() {
   const [success, setSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const [newEventName, setNewEventName] = useState("");
+  const [newEventCapacity, setNewEventCapacity] = useState("");
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+
   useEffect(() => {
     let storedUserId = localStorage.getItem("demoUserId");
     if (!storedUserId) {
@@ -95,6 +99,33 @@ export default function Home() {
     }
   };
 
+  const createEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventName || !newEventCapacity) return;
+    setIsCreatingEvent(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newEventName, totalCapacity: parseInt(newEventCapacity) })
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || "Failed to create event");
+      else {
+        setSuccess("Event created successfully");
+        setNewEventName("");
+        setNewEventCapacity("");
+        await fetchData(userId);
+      }
+    } catch (err) {
+      setError("Failed to create event.");
+    } finally {
+      setIsCreatingEvent(false);
+    }
+  };
+
   const Countdown = ({ expiresAt }: { expiresAt: string }) => {
     const [timeLeft, setTimeLeft] = useState("");
 
@@ -161,6 +192,19 @@ export default function Home() {
             {success}
           </div>
         )}
+
+        <section className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 dark:border-gray-800 mb-10 transition-shadow">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+            Add New Event
+          </h2>
+          <form onSubmit={createEvent} className="flex flex-col md:flex-row gap-4">
+            <input type="text" placeholder="Event Name" className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-white" value={newEventName} onChange={e => setNewEventName(e.target.value)} required />
+            <input type="number" placeholder="Capacity" min="1" className="w-full md:w-32 px-4 py-3 border rounded-lg focus:ring-2 outline-none dark:bg-gray-800 dark:border-gray-700 dark:text-white" value={newEventCapacity} onChange={e => setNewEventCapacity(e.target.value)} required />
+            <button type="submit" disabled={isCreatingEvent} className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+              {isCreatingEvent ? "..." : "Create"}
+            </button>
+          </form>
+        </section>
 
         <section className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 dark:border-gray-800 mb-10 transition-shadow">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-900 dark:text-white">
