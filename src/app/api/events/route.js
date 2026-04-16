@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/mongoose";
 import { Event } from "@/models/Event";
 import { Ticket } from "@/models/Ticket";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request) {
   try {
     await connectDB();
@@ -32,6 +34,47 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("Failed to create event:", error);
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    await connectDB();
+    const events = await Event.find().sort({ createdAt: -1 });
+
+    const eventsWithStats = await Promise.all(
+      events.map(async (event) => {
+        const available = await Ticket.countDocuments({
+          eventId: event._id,
+          status: "Available",
+        });
+        const held = await Ticket.countDocuments({
+          eventId: event._id,
+          status: "Held",
+        });
+        const purchased = await Ticket.countDocuments({
+          eventId: event._id,
+          status: "Purchased",
+        });
+
+        return {
+          ...event.toObject(),
+          stats: {
+            available,
+            held,
+            purchased,
+          },
+        };
+      }),
+    );
+
+    return NextResponse.json({ events: eventsWithStats }, { status: 200 });
+  } catch (error) {
+    console.error("Failed to fetch events:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 },

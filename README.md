@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Event Ticketing System
 
-## Getting Started
+A Next.js application that provides a concurrent event ticketing backend with rate-limiting and a frontend dashboard.
 
-First, run the development server:
+## Overview
+
+This project handles high-concurrency ticket reservations. It minimizes double-booking risks during traffic spikes by utilizing a pessimistic locking technique via atomic MongoDB operations. It integrates Upstash Redis to apply sliding-window rate limits, protecting the endpoints from excessive traffic.
+
+## Features
+
+- Event Management: Create and view events alongside live ticket inventory.
+- Concurrent Reservations: Uses MongoDB's atomic `findOneAndUpdate` to hold tickets securely, managing race conditions.
+- Hold Strategy: Tickets are reserved for a strict 5-minute checkout window before expiring.
+- Auto-Release Sweeper: An administrative endpoint to release expired held tickets back into the available pool.
+- Bot Protection: Upstash Redis manages IP-based rate limiting (configured for 5 requests per 10 seconds).
+- Client Dashboard: A Next.js frontend built with Tailwind CSS v4 outlining the user workflow.
+
+## Technologies Used
+
+- Next.js (App Router)
+- MongoDB (Mongoose)
+- Upstash Redis
+- Tailwind CSS
+
+## Prerequisites
+
+- Node.js (v18 or higher)
+- Local or Cloud MongoDB instance
+- Upstash Redis account
+
+## Configuration
+
+Create a `.env` file in the root directory and define the following variables:
+
+```text
+UPSTASH_REDIS_REST_URL=your_upstash_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+MONGO_URI=mongodb://localhost:27017/your_database_name
+```
+
+## Setup and Running
+
+Install project dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The application will be available at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Endpoints
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `GET /api/events`
+  Retrieves all events and their aggregated ticket availability statistics.
 
-## Learn More
+- `POST /api/events`
+  Creates a new event. Requires `name` and `totalCapacity` in the JSON body. Generates available ticket documents.
 
-To learn more about Next.js, take a look at the following resources:
+- `GET /api/tickets/me`
+  Retrieves tickets currently held or purchased by a specific `userId`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `POST /api/tickets/reserve`
+  Applies IP rate-limiting. Uses an atomic operation to update a ticket's status from "Available" to "Held", assigns it to the user, and sets an expiration timestamp.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `POST /api/tickets/purchase`
+  Validates the ticket is held by the requesting user and hasn't expired, then changes the status to "Purchased".
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/admin/release-holds`
+  Administrative endpoint that scans the ticket collection and resets any expired "Held" tickets back to "Available".
